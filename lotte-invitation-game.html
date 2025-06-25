@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>롯데캐피탈 입사 축하 파티 초대 게임</title>
+  <style>
+    body {
+      background: #f0f8ff;
+      min-height: 100vh;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .game-area {
+      position: relative;
+      width: 600px;
+      height: 400px;
+      background: none;
+      border: 3px solid #228B22;
+      border-radius: 10px;
+      overflow: hidden;
+      background-image: url('./asset/background.png');
+      background-size: cover;
+      background-position: center;
+    }
+    .player {
+      position: absolute;
+      width: 40px;
+      height: 40px;
+      background-color: #4CAF50;
+      border: 2px solid #2E7D32;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      z-index: 10;
+      transition: all 0.1s ease;
+    }
+    .npc {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      transition: all 0.3s ease;
+      box-shadow: none;
+    }
+    .npc.invited {
+      background-color: #FFD700;
+      border: 3px solid #FFA500;
+      transform: scale(1.1);
+      box-shadow: 0 0 15px #FFD700;
+    }
+    .npc.not-invited {
+      background-color: #FF6B6B;
+      border: 3px solid #FF1744;
+      transform: scale(1);
+    }
+    .npc-label {
+      position: absolute;
+      font-size: 12px;
+      font-weight: bold;
+      color: #2c3e50;
+      text-align: center;
+      width: 70px;
+      background-color: rgba(255,255,255,0.8);
+      padding: 2px;
+      border-radius: 4px;
+      pointer-events: none;
+    }
+    .msg {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: #4CAF50;
+      color: white;
+      border-radius: 8px;
+      font-size: 16px;
+      font-weight: bold;
+      animation: fadeIn 0.5s ease-in-out;
+    }
+    .party, .finished {
+      text-align: center;
+      padding: 40px;
+      border-radius: 15px;
+      max-width: 500px;
+      margin-top: 30px;
+    }
+    .party {
+      background-color: #FFE4E1;
+      border: 3px solid #FF69B4;
+      animation: partyAnimation 2s ease-in-out infinite alternate;
+    }
+    .finished {
+      background-color: #E8F5E8;
+      border: 3px solid #4CAF50;
+    }
+    .resolution-box {
+      background-color: #F1F8E9;
+      padding: 20px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      border: 2px solid #8BC34A;
+    }
+    .main-btn, .restart-btn {
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      border: none;
+      border-radius: 25px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-right: 10px;
+    }
+    .main-btn {
+      background-color: #4CAF50;
+    }
+    .main-btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+      transform: scale(0.95);
+    }
+    .restart-btn {
+      background-color: #2196F3;
+    }
+    .main-btn:hover:not(:disabled), .restart-btn:hover {
+      transform: scale(1.05) !important;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes partyAnimation {
+      from { transform: scale(1); }
+      to { transform: scale(1.02); }
+    }
+    textarea {
+      width: 100%;
+      height: 100px;
+      padding: 15px;
+      font-size: 16px;
+      border-radius: 10px;
+      border: 2px solid #FF69B4;
+      resize: none;
+      margin-bottom: 20px;
+      font-family: inherit;
+    }
+  </style>
+</head>
+<body>
+  <h1>🎉 입사 축하 파티 초대 게임 🎉</h1>
+  <div id="game-root"></div>
+  <script>
+    // 상태 변수
+    let gameState = 'playing'; // 'playing', 'party', 'finished'
+    let playerPosition = { x: 50, y: 50 };
+    let invitedNPCs = new Set();
+    let resolution = '';
+    let messageTimeout = null;
+    let showMessage = '';
+
+    const npcs = [
+      { id: 'parents', name: '부모님', x: 150, y: 100, emoji: '👨‍👩‍👧‍👦', img: './asset/parents.png' },
+      { id: 'friend', name: '친구', x: 300, y: 200, emoji: '👫' },
+      { id: 'teacher', name: '선생님', x: 500, y: 150, emoji: '👨‍🏫' },
+      { id: 'colleague', name: '동기', x: 400, y: 300, emoji: '👥' }
+    ];
+
+    function render() {
+      const root = document.getElementById('game-root');
+      root.innerHTML = '';
+      if (gameState === 'playing') {
+        renderPlaying(root);
+      } else if (gameState === 'party') {
+        renderParty(root);
+      } else if (gameState === 'finished') {
+        renderFinished(root);
+      }
+    }
+
+    function renderPlaying(root) {
+      // 안내
+      const info = document.createElement('div');
+      info.style.marginBottom = '10px';
+      info.style.padding = '10px';
+      info.style.background = '#e8f4fd';
+      info.style.borderRadius = '8px';
+      info.style.textAlign = 'center';
+      info.innerHTML = `
+        <p style="margin:0;font-size:14px;">
+          방향키로 이동하고, 엔터키로 초대장을 전달하세요! (${invitedNPCs.size}/${npcs.length}명 초대 완료)
+        </p>
+      `;
+      root.appendChild(info);
+
+      // 게임 영역
+      const area = document.createElement('div');
+      area.className = 'game-area';
+      // 플레이어
+      const player = document.createElement('div');
+      player.className = 'player';
+      player.style.left = playerPosition.x + 'px';
+      player.style.top = playerPosition.y + 'px';
+      player.innerHTML = '<img src="./asset/me.png" alt="player" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">';
+      area.appendChild(player);
+      // NPC
+      npcs.forEach(npc => {
+        const npcDiv = document.createElement('div');
+        npcDiv.className = 'npc ' + (invitedNPCs.has(npc.id) ? 'invited' : 'not-invited');
+        npcDiv.style.left = npc.x + 'px';
+        npcDiv.style.top = npc.y + 'px';
+        if (npc.img) {
+          npcDiv.innerHTML = `<img src="${npc.img}" alt="${npc.name}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">${invitedNPCs.has(npc.id) ? '<div style=\"font-size:12px;color:#fff;font-weight:bold;margin-top:2px\">✓</div>' : ''}`;
+        } else {
+          npcDiv.innerHTML = `<div style=\"text-align:center;\">${npc.emoji}${invitedNPCs.has(npc.id) ? '<div style=\"font-size:12px;color:#fff;font-weight:bold;margin-top:2px\">✓</div>' : ''}</div>`;
+        }
+        area.appendChild(npcDiv);
+        // 이름
+        const label = document.createElement('div');
+        label.className = 'npc-label';
+        label.style.left = (npc.x - 10) + 'px';
+        label.style.top = (npc.y + 55) + 'px';
+        label.innerText = npc.name;
+        area.appendChild(label);
+      });
+      root.appendChild(area);
+      // 메시지
+      if (showMessage) {
+        const msg = document.createElement('div');
+        msg.className = 'msg';
+        msg.innerText = showMessage;
+        root.appendChild(msg);
+      }
+    }
+
+    function renderParty(root) {
+      const party = document.createElement('div');
+      party.className = 'party';
+      party.innerHTML = `
+        <h2 style="color:#FF1493;margin-bottom:20px;">🎊 축하합니다! 🎊</h2>
+        <p style="font-size:18px;margin-bottom:30px;color:#2c3e50;">모든 분들께 초대장을 전달했습니다!<br>이제 나의 다짐을 입력해주세요.</p>
+        <textarea id="resolution-input" placeholder="롯데캐피탈에서의 나의 다짐을 입력해주세요..."></textarea>
+        <br>
+        <button class="main-btn" id="submit-btn" disabled>다짐 완료! 🚀</button>
+      `;
+      root.appendChild(party);
+      // 입력 이벤트
+      const input = document.getElementById('resolution-input');
+      const btn = document.getElementById('submit-btn');
+      input.addEventListener('input', function() {
+        resolution = input.value;
+        btn.disabled = !resolution.trim();
+      });
+      btn.addEventListener('click', function() {
+        if (resolution.trim()) {
+          gameState = 'finished';
+          render();
+        }
+      });
+    }
+
+    function renderFinished(root) {
+      const finished = document.createElement('div');
+      finished.className = 'finished';
+      finished.innerHTML = `
+        <h2 style="color:#2E7D32;margin-bottom:20px;">🎉 환영합니다! 🎉</h2>
+        <div class="resolution-box">
+          <p style="font-size:16px;color:#2c3e50;margin-bottom:10px;"><strong>나의 다짐:</strong></p>
+          <p style="font-size:18px;color:#2E7D32;font-style:italic;line-height:1.5;">"${resolution}"</p>
+        </div>
+        <h3 style="color:#FF6B35;font-size:24px;font-weight:bold;margin-bottom:30px;text-shadow:2px 2px 4px rgba(0,0,0,0.1);">🏢 당신은 롯데캐피탈의 일원이 되었습니다! 🏢</h3>
+        <button class="restart-btn" id="restart-btn">🔄 다시 시작하기</button>
+      `;
+      root.appendChild(finished);
+      document.getElementById('restart-btn').onclick = function() {
+        resetGame();
+        render();
+      };
+    }
+
+    function showTemporaryMessage(message) {
+      showMessage = message;
+      render();
+      if (messageTimeout) clearTimeout(messageTimeout);
+      messageTimeout = setTimeout(() => {
+        showMessage = '';
+        render();
+      }, 2000);
+    }
+
+    function inviteNPC(npc) {
+      invitedNPCs.add(npc.id);
+      showTemporaryMessage(`${npc.name}에게 초대장을 전달했습니다! 🎉`);
+      // 사운드 효과
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.setValueAtTime(800, ctx.currentTime);
+        gain.gain.setValueAtTime(0.1, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.5);
+      } catch (e) {}
+    }
+
+    function checkNPCInteraction() {
+      const interactionDistance = 60;
+      for (const npc of npcs) {
+        const dx = playerPosition.x - npc.x;
+        const dy = playerPosition.y - npc.y;
+        const distance = Math.sqrt(dx*dx + dy*dy);
+        if (distance < interactionDistance && !invitedNPCs.has(npc.id)) {
+          inviteNPC(npc);
+          break;
+        }
+      }
+    }
+
+    function handleKeyDown(e) {
+      if (gameState !== 'playing') return;
+      const moveSpeed = 10;
+      const gameArea = { width: 600, height: 400 };
+      let moved = false;
+      switch (e.key) {
+        case 'ArrowUp':
+          e.preventDefault();
+          playerPosition.y = Math.max(0, playerPosition.y - moveSpeed);
+          moved = true;
+          break;
+        case 'ArrowDown':
+          e.preventDefault();
+          playerPosition.y = Math.min(gameArea.height - 40, playerPosition.y + moveSpeed);
+          moved = true;
+          break;
+        case 'ArrowLeft':
+          e.preventDefault();
+          playerPosition.x = Math.max(0, playerPosition.x - moveSpeed);
+          moved = true;
+          break;
+        case 'ArrowRight':
+          e.preventDefault();
+          playerPosition.x = Math.min(gameArea.width - 40, playerPosition.x + moveSpeed);
+          moved = true;
+          break;
+        case 'Enter':
+          e.preventDefault();
+          checkNPCInteraction();
+          break;
+      }
+      if (moved) render();
+      // 파티로 전환 체크
+      if (invitedNPCs.size === npcs.length && gameState === 'playing') {
+        setTimeout(() => {
+          gameState = 'party';
+          showTemporaryMessage('모든 분들께 초대장을 전달했습니다! 🎊');
+          render();
+        }, 1000);
+      }
+    }
+
+    function resetGame() {
+      gameState = 'playing';
+      playerPosition = { x: 50, y: 50 };
+      invitedNPCs = new Set();
+      resolution = '';
+      showMessage = '';
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    render();
+  </script>
+</body>
+</html> 
